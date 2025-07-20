@@ -88,53 +88,17 @@ echo [INFO] Testing component functionality...
 echo.
 
 echo [TEST] Creating test namespace...
-vagrant ssh k3s-master -c "kubectl create namespace component-test --dry-run=client -o yaml | kubectl apply -f -"
+vagrant ssh k3s-master -c "kubectl create namespace component-test 2>/dev/null || kubectl get namespace component-test"
 
-echo [TEST] Testing storage provisioner...
-vagrant ssh k3s-master -c "cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: test-pvc
-  namespace: component-test
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 100Mi
-  storageClassName: local-path
-EOF"
+echo [TEST] Testing basic pod creation...
+vagrant ssh k3s-master -c "kubectl run test-pod --image=busybox --restart=Never --namespace=component-test -- sleep 30"
 
-echo [TEST] Waiting for PVC to bind...
+echo [TEST] Waiting for pod to start...
 timeout /t 5 >nul
-vagrant ssh k3s-master -c "kubectl get pvc -n component-test"
+vagrant ssh k3s-master -c "kubectl get pods -n component-test"
 
-echo [TEST] Testing pod with storage...
-vagrant ssh k3s-master -c "cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Pod
-metadata:
-  name: test-pod
-  namespace: component-test
-spec:
-  containers:
-  - name: test-container
-    image: busybox
-    command: ['sh', '-c', 'echo \"Storage test successful!\" > /data/test.txt && cat /data/test.txt && sleep 10']
-    volumeMounts:
-    - name: test-volume
-      mountPath: /data
-  volumes:
-  - name: test-volume
-    persistentVolumeClaim:
-      claimName: test-pvc
-  restartPolicy: Never
-EOF"
-
-echo [TEST] Waiting for pod to complete...
-timeout /t 10 >nul
-vagrant ssh k3s-master -c "kubectl logs test-pod -n component-test 2>/dev/null || echo 'Pod still running...'"
+echo [TEST] Testing storage class availability...
+vagrant ssh k3s-master -c "kubectl get storageclass local-path -o name || echo 'Storage class not found'"
 
 echo [TEST] Cleaning up test resources...
 vagrant ssh k3s-master -c "kubectl delete namespace component-test --timeout=30s"

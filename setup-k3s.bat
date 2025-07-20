@@ -1,6 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Initial setup and validation
 echo ================================================
 echo           K3s Kubernetes Lab Setup
 echo ================================================
@@ -16,10 +17,28 @@ if %errorlevel% neq 0 (
 )
 
 :: Check if VirtualBox is installed
+set "VBOX_FOUND=0"
 vboxmanage --version >nul 2>&1
-if %errorlevel% neq 0 (
+if %errorlevel% equ 0 set "VBOX_FOUND=1"
+
+:: Try common VirtualBox installation paths
+if %VBOX_FOUND% equ 0 (
+    if exist "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" (
+        set "PATH=%PATH%;C:\Program Files\Oracle\VirtualBox"
+        set "VBOX_FOUND=1"
+    )
+)
+if %VBOX_FOUND% equ 0 (
+    if exist "C:\Program Files (x86)\Oracle\VirtualBox\VBoxManage.exe" (
+        set "PATH=%PATH%;C:\Program Files (x86)\Oracle\VirtualBox"
+        set "VBOX_FOUND=1"
+    )
+)
+
+if %VBOX_FOUND% equ 0 (
     echo ERROR: VirtualBox is not installed or not in PATH
     echo Please install VirtualBox from: https://www.virtualbox.org/
+    echo Or add VirtualBox to your system PATH
     pause
     exit /b 1
 )
@@ -31,33 +50,24 @@ echo.
 set PROJECT_DIR=%CD%
 echo [INFO] Using project directory: %PROJECT_DIR%
 
-cd /d "%PROJECT_DIR%"
-
-:menu_start
-echo ================================================
-echo           K3s Kubernetes Lab Setup
-echo ================================================
-echo.
-
 :: Check if Vagrantfile exists
 if not exist "Vagrantfile" (
     echo [ERROR] Vagrantfile not found!
     echo Please ensure you have a valid Vagrantfile in this directory.
-    echo You can copy it from the provided artifact or create it manually.
     pause
     exit /b 1
-) else (
-    echo [INFO] Vagrantfile found
 )
 
-:: Start the main menu loop
-goto menu_start
+echo [INFO] Vagrantfile found
+echo.
 
-:: This should never be reached
-goto end
-
-:: Menu for user choice
+:: Main menu loop starts here
+:show_menu
+cls
 echo ================================================
+echo           K3s Kubernetes Lab Setup
+echo ================================================
+echo.
 echo Select an option:
 echo 1. Start full cluster (master + 1 worker)
 echo 2. Start full cluster (master + 2 workers)
@@ -219,7 +229,7 @@ if %errorlevel% equ 0 (
     echo [SUCCESS] Kubeconfig saved to: %CD%\kubeconfig\k3s-config
     echo.
     echo To use kubectl from Windows:
-    echo 1. Install kubectl (option 9)
+    echo 1. Install kubectl (option 13)
     echo 2. Set environment variable: set KUBECONFIG=%CD%\kubeconfig\k3s-config
     echo 3. Or copy config to: %USERPROFILE%\.kube\config
 ) else (
@@ -261,7 +271,7 @@ echo - HTTP: localhost:8080
 echo - HTTPS: localhost:8443
 echo.
 echo Access URLs:
-echo - kubectl: Use kubeconfig from option 8
+echo - kubectl: Use kubeconfig from option 12
 echo - Dashboard: Deploy using kubectl
 echo ================================================
 exit /b 0
@@ -275,10 +285,7 @@ goto menu_return
 echo.
 echo Press any key to return to menu...
 pause > nul
-cls
-goto menu_start
-
-:menu_start
+goto show_menu
 
 :end
 echo.

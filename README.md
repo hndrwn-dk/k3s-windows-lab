@@ -68,20 +68,20 @@ setup-k3s.bat
 The interactive script provides these options:
 
 ```
-1️⃣  Start full cluster (master + 1 worker)
-2️⃣  Start full cluster (master + 2 workers)
-3️⃣  Start master only
-4️⃣  Start worker1 only
-5️⃣  Start worker2 only
-6️⃣  Stop all VMs
-7️⃣  Destroy all VMs
-8️⃣  Check cluster status
-9️⃣  SSH to master
-🔟  SSH to worker1
-1️⃣1️⃣  SSH to worker2
-1️⃣2️⃣  Get kubeconfig
-1️⃣3️⃣  Install kubectl on Windows
-0️⃣  Exit
+1.  Start full cluster (master + 1 worker)
+2.  Start full cluster (master + 2 workers)
+3.  Start master only
+4.  Start worker1 only
+5.  Start worker2 only
+6.  Stop all VMs
+7.  Destroy all VMs
+8.  Check cluster status
+9.  SSH to master
+10. SSH to worker1
+11. SSH to worker2
+12. Get kubeconfig
+13. Install kubectl on Windows
+0.  Exit
 ```
 
 ## 🛠️ Additional Helper Scripts
@@ -115,8 +115,8 @@ quick-examples.bat
 
 ### 🎯 Option A: Use the Script (Recommended)
 1. Run `setup-k3s.bat`
-2. Choose option **1️⃣3️⃣** to download kubectl
-3. Choose option **1️⃣2️⃣** to export kubeconfig
+2. Choose option **13** to download kubectl
+3. Choose option **12** to export kubeconfig
 4. Add kubectl to your PATH or use full path
 
 ### ⚙️ Option B: Manual Setup
@@ -187,14 +187,13 @@ kubectl port-forward svc/nginx 8080:80
 
 ```
 k3s-windows-lab/
-├── README.md                 # This file
-├── setup-k3s.bat            # Main automation script
-├── Vagrantfile               # VM configuration
-├── docs/
-│   ├── troubleshooting.md    # Common issues and solutions
-│   ├── advanced-usage.md     # Advanced configurations
-│   └── examples/             # Example deployments
-└── .gitignore                # Git ignore file
+├── README.md                  # Documentation
+├── setup-k3s.bat              # Main script
+├── check-components.bat       # Health checker  
+├── quick-examples.bat         # Sample apps
+├── Vagrantfile                # VM config
+├── LICENSE                    # MIT license
+└── .gitignore                 # Git rules
 ```
 
 ## 🔍 Common Commands
@@ -240,7 +239,7 @@ quick-examples.bat          # Deploy sample apps
 - Check K3s logs: `vagrant ssh k3s-master -c "journalctl -u k3s"`
 - Restart K3s: `vagrant ssh k3s-master -c "sudo systemctl restart k3s"`
 
-For more detailed troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md).
+For more detailed troubleshooting, check our GitHub issues or discussions.
 
 ## 🎓 What's Included
 
@@ -271,9 +270,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 🐛 Create an [issue](https://github.com/yourusername/k3s-windows-lab/issues) for bug reports
-- 💬 Start a [discussion](https://github.com/yourusername/k3s-windows-lab/discussions) for questions
-- 📖 Check [troubleshooting guide](docs/troubleshooting.md) for common issues
+- 🐛 Create an [issue](https://github.com/hndrwn-dk/k3s-windows-lab/issues) for bug reports
+- 💬 Start a [discussion](https://github.com/hndrwn-dk/k3s-windows-lab/discussions) for questions
+- 📖 Check the troubleshooting section above for common issues
 
 ---
 

@@ -1,0 +1,41 @@
+# Vagrant files
+.vagrant/
+*.log
+ubuntu-*-console.log
+
+# VirtualBox files
+*.vbox-prev
+
+# K3s generated files
+node-token
+kubeconfig/
+tools/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup

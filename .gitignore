@@ -2,6 +2,7 @@
 .vagrant/
 *.log
 ubuntu-*-console.log
+*.vagrant.d/
 
 # VirtualBox files
 *.vbox-prev

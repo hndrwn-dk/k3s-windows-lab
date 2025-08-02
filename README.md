@@ -9,6 +9,13 @@
 
 A complete automated setup for running a K3s Kubernetes cluster on Windows 11 using Vagrant and VirtualBox.
 
+## ☕ Support Me
+
+If you find this project helpful, you can support me here:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-yellow?style=for-the-badge&logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/hendrawan)
+
+
 ## ✨ Features
 
 - 🎯 **Automated K3s Installation**: One-click cluster deployment

@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-dashboard
+  namespace: arcade
+  labels:
+    app: game-dashboard
+    component: frontend
+    k8s-concept: ingress
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: game-dashboard
+  template:
+    metadata:
+      labels:
+        app: game-dashboard
+        component: frontend
+    spec:
+      containers:
+      - name: dashboard
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "50m"
+        volumeMounts:
+        - name: dashboard-content
+          mountPath: /usr/share/nginx/html
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      volumes:
+      - name: dashboard-content
+        configMap:
+          name: dashboard-content
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-content
+  namespace: arcade
+data:
+  index.html: |
+    <!-- Dashboard HTML content - reference to cluster-dashboard.html -->
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Kubernetes Game Arcade</title>
+        <style>
+            body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-family: 'Courier New', monospace; text-align: center; padding: 20px; }
+            .header h1 { font-size: 3em; animation: glow 2s ease-in-out infinite alternate; }
+            @keyframes glow { from { text-shadow: 0 0 10px #fff; } to { text-shadow: 0 0 20px #fff, 0 0 30px #fff; } }
+        </style>
+    </head>
+    <body>
+        <h1>🎮 KUBERNETES GAME ARCADE 🎮</h1>
+        <h2>🚀 Welcome to the K8s Learning Platform!</h2>
+        <p>Games available: Pac-Man, Space Invaders, Breakout, Snake, Tetris, and more!</p>
+        <p>Each game teaches different Kubernetes concepts through fun gameplay.</p>
+        <div style="margin: 20px 0; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+            <h3>🎯 Available Games</h3>
+            <p>🟡 Pac-Man - Learn networking</p>
+            <p>👾 Space Invaders - Learn security</p>
+            <p>🧱 Breakout - Learn microservices</p>
+            <p>🐍 Snake - Learn scaling</p>
+            <p>🧩 Tetris - Learn resource management</p>
+        </div>
+        <p><strong>Access games via NodePort services on your cluster!</strong></p>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: arcade
+  labels:
+    app: game-dashboard
+spec:
+  selector:
+    app: game-dashboard
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30000
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: game-dashboard-ingress
+  namespace: arcade
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+spec:
+  rules:
+  - host: games.k3s.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 80

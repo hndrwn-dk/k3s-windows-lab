@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pacman-game
+  namespace: arcade
+  labels:
+    app: pacman
+    game-type: arcade
+    difficulty: easy
+    k8s-concept: networking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pacman
+  template:
+    metadata:
+      labels:
+        app: pacman
+        game-type: arcade
+    spec:
+      containers:
+      - name: pacman
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: game-content
+          mountPath: /usr/share/nginx/html
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: game-content
+        configMap:
+          name: pacman-content
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pacman-content
+  namespace: arcade
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Pac-Man on Kubernetes</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 20px;
+                background: #000;
+                color: #ffff00;
+                font-family: 'Courier New', monospace;
+                text-align: center;
+            }
+            .k8s-info {
+                background: #1a1a1a;
+                padding: 10px;
+                margin: 10px 0;
+                border: 2px solid #ffff00;
+                border-radius: 5px;
+            }
+            canvas {
+                border: 3px solid #0000ff;
+                background: #000;
+                margin: 20px 0;
+            }
+            .score {
+                font-size: 24px;
+                margin: 10px 0;
+            }
+            .instructions {
+                background: #1a1a1a;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 5px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🟡 PAC-MAN ON KUBERNETES 🟡</h1>
+        
+        <div class="k8s-info">
+            <h3>🚀 Running on K3s Cluster</h3>
+            <p><strong>Namespace:</strong> arcade | <strong>Pod:</strong> pacman-game</p>
+            <p><strong>Educational Goal:</strong> Learn Kubernetes networking!</p>
+        </div>
+
+        <div class="score">
+            <span>SCORE: <span id="score">0</span></span> | 
+            <span>LIVES: <span id="lives">3</span></span>
+        </div>
+
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+        <div class="instructions">
+            <h3>🎮 CONTROLS</h3>
+            <p>Use ARROW KEYS to move Pac-Man</p>
+            <p>Collect all dots while avoiding ghosts!</p>
+            <button onclick="startGame()" style="padding: 10px 20px; font-size: 16px; background: #ffff00; color: #000; border: none; border-radius: 5px; cursor: pointer;">START GAME</button>
+            <button onclick="pauseGame()" style="padding: 10px 20px; font-size: 16px; background: #ff0000; color: #fff; border: none; border-radius: 5px; cursor: pointer;">PAUSE</button>
+        </div>
+
+        <div class="k8s-info">
+            <h3>🎓 Kubernetes Learning Points</h3>
+            <p>• This game runs in a Pod (isolated container)</p>
+            <p>• Accessible via NodePort Service</p>
+            <p>• ConfigMap stores the game content</p>
+            <p>• Resource limits prevent resource starvation</p>
+        </div>
+
+        <script>
+            // [Game JavaScript would be here - truncated for manifest readability]
+            // Full game code is available in /games/web-content/pacman.html
+            alert('🎮 Pac-Man game loaded from ConfigMap!\nThis demonstrates how to serve web content in Kubernetes using ConfigMaps and nginx.');
+        </script>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pacman-service
+  namespace: arcade
+  labels:
+    app: pacman
+spec:
+  selector:
+    app: pacman
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30001
+  type: NodePort

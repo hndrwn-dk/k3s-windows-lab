@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arcade
+  labels:
+    purpose: gaming
+    environment: fun
+    k8s-learning: "true"
+  annotations:
+    description: "Kubernetes Game Arcade - Learn K8s through retro gaming!"
+    created-by: "k3s-windows-lab"

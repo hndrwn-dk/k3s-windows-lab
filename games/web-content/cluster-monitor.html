@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Cluster Monitor Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border-color: #00ff88;
+        }
+        .metric-value {
+            font-size: 2.5em;
+            color: #00ff88;
+            margin: 10px 0;
+        }
+        .metric-chart {
+            width: 100%;
+            height: 100px;
+            background: #000;
+            border-radius: 8px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .node-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .node-card {
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid;
+            transition: all 0.3s ease;
+        }
+        .node-healthy { border-color: #4CAF50; }
+        .node-warning { border-color: #ff9800; }
+        .node-critical { border-color: #f44336; }
+        .pod-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .pod {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pod:hover {
+            transform: scale(1.2);
+        }
+        .pod-running { background: #4CAF50; }
+        .pod-pending { background: #ff9800; }
+        .pod-failed { background: #f44336; }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+        }
+        .alert {
+            background: rgba(244, 67, 54, 0.2);
+            border: 2px solid #f44336;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .info-panel {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 KUBERNETES CLUSTER MONITOR GAME 📊</h1>
+    
+    <div class="info-panel">
+        <h3>🎮 Mission: Keep Your Cluster Healthy!</h3>
+        <p><strong>Objective:</strong> Monitor and maintain optimal cluster performance</p>
+        <p><strong>Learning:</strong> Observability, metrics, troubleshooting</p>
+        <p><strong>Namespace:</strong> educational | <strong>Pod:</strong> cluster-monitor</p>
+    </div>
+
+    <div class="dashboard">
+        <div class="metric-card">
+            <h3>🖥️ CPU Usage</h3>
+            <div class="metric-value" id="cpuUsage">45%</div>
+            <div class="metric-chart" id="cpuChart"></div>
+            <p>Cluster CPU utilization</p>
+        </div>
+        
+        <div class="metric-card">
+            <h3>💾 Memory Usage</h3>
+            <div class="metric-value" id="memoryUsage">62%</div>
+            <div class="metric-chart" id="memoryChart"></div>
+            <p>Cluster memory utilization</p>
+        </div>
+        
+        <div class="metric-card">
+            <h3>📦 Pod Count</h3>
+            <div class="metric-value" id="podCount">12</div>
+            <div class="metric-chart" id="podChart"></div>
+            <p>Running pods across cluster</p>
+        </div>
+        
+        <div class="metric-card">
+            <h3>🌐 Network I/O</h3>
+            <div class="metric-value" id="networkIO">2.4MB/s</div>
+            <div class="metric-chart" id="networkChart"></div>
+            <p>Cluster network traffic</p>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h3>🏗️ Cluster Nodes</h3>
+        <div class="node-grid">
+            <div class="node-card node-healthy" id="masterNode">
+                <h4>🎯 k3s-master</h4>
+                <p>Status: <span id="masterStatus">Ready</span></p>
+                <p>CPU: <span id="masterCPU">35%</span></p>
+                <p>Memory: <span id="masterMemory">1.2GB/2GB</span></p>
+            </div>
+            <div class="node-card node-healthy" id="worker1Node">
+                <h4>👷 k3s-worker1</h4>
+                <p>Status: <span id="worker1Status">Ready</span></p>
+                <p>CPU: <span id="worker1CPU">25%</span></p>
+                <p>Memory: <span id="worker1Memory">0.6GB/1GB</span></p>
+            </div>
+            <div class="node-card node-healthy" id="worker2Node">
+                <h4>👷 k3s-worker2</h4>
+                <p>Status: <span id="worker2Status">Ready</span></p>
+                <p>CPU: <span id="worker2CPU">20%</span></p>
+                <p>Memory: <span id="worker2Memory">0.4GB/1GB</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h3>📦 Pod Status Visualization</h3>
+        <p>Click on pods to see details. Colors: 🟢 Running | 🟡 Pending | 🔴 Failed</p>
+        <div class="pod-grid" id="podGrid">
+            <!-- Pods will be generated dynamically -->
+        </div>
+    </div>
+
+    <div id="alertPanel"></div>
+
+    <div class="controls">
+        <button onclick="startMonitoring()">🚀 START MONITORING</button>
+        <button onclick="simulateLoad()">⚡ SIMULATE LOAD</button>
+        <button onclick="triggerAlert()">🚨 TRIGGER ALERT</button>
+        <button onclick="showKubectlCommands()">🎯 LEARN KUBECTL</button>
+        <button onclick="location.href='http://192.168.56.10:30000'">🏠 BACK TO ARCADE</button>
+    </div>
+
+    <div class="info-panel">
+        <h3>🎓 Monitoring Concepts You're Learning</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                <h4>📈 Metrics Collection</h4>
+                <p>CPU, Memory, Network, Storage metrics</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                <h4>🔍 Observability</h4>
+                <p>Monitoring, logging, tracing, alerting</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                <h4>🎯 Troubleshooting</h4>
+                <p>Identifying bottlenecks, debugging issues</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                <h4>📊 Capacity Planning</h4>
+                <p>Resource forecasting, scaling decisions</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let monitoring = false;
+        let metrics = {
+            cpu: [],
+            memory: [],
+            pods: [],
+            network: []
+        };
+        let currentPods = [];
+        
+        // Simulate cluster metrics
+        function generateMetrics() {
+            const cpu = Math.random() * 100;
+            const memory = Math.random() * 100;
+            const pods = Math.floor(Math.random() * 20) + 8;
+            const network = Math.random() * 10;
+            
+            metrics.cpu.push(cpu);
+            metrics.memory.push(memory);
+            metrics.pods.push(pods);
+            metrics.network.push(network);
+            
+            // Keep only last 50 data points
+            if (metrics.cpu.length > 50) {
+                metrics.cpu.shift();
+                metrics.memory.shift();
+                metrics.pods.shift();
+                metrics.network.shift();
+            }
+            
+            return { cpu, memory, pods, network };
+        }
+        
+        function updateMetricDisplay() {
+            const current = generateMetrics();
+            
+            document.getElementById('cpuUsage').textContent = `${current.cpu.toFixed(1)}%`;
+            document.getElementById('memoryUsage').textContent = `${current.memory.toFixed(1)}%`;
+            document.getElementById('podCount').textContent = current.pods;
+            document.getElementById('networkIO').textContent = `${current.network.toFixed(1)}MB/s`;
+            
+            // Update node status based on metrics
+            updateNodeStatus('master', current.cpu * 0.6, current.memory * 0.7);
+            updateNodeStatus('worker1', current.cpu * 0.3, current.memory * 0.4);
+            updateNodeStatus('worker2', current.cpu * 0.2, current.memory * 0.3);
+            
+            // Update charts
+            drawChart('cpuChart', metrics.cpu, '#ff6b6b');
+            drawChart('memoryChart', metrics.memory, '#4ecdc4');
+            drawChart('podChart', metrics.pods, '#45b7d1');
+            drawChart('networkChart', metrics.network, '#f9ca24');
+            
+            // Check for alerts
+            checkAlerts(current);
+        }
+        
+        function updateNodeStatus(node, cpu, memory) {
+            const cpuElement = document.getElementById(`${node}CPU`);
+            const memoryElement = document.getElementById(`${node}Memory`);
+            const nodeCard = document.getElementById(`${node}Node`);
+            
+            cpuElement.textContent = `${cpu.toFixed(1)}%`;
+            
+            if (node === 'master') {
+                memoryElement.textContent = `${(memory * 0.02).toFixed(1)}GB/2GB`;
+            } else {
+                memoryElement.textContent = `${(memory * 0.01).toFixed(1)}GB/1GB`;
+            }
+            
+            // Update node health status
+            if (cpu > 80 || memory > 85) {
+                nodeCard.className = 'node-card node-critical';
+            } else if (cpu > 60 || memory > 70) {
+                nodeCard.className = 'node-card node-warning';
+            } else {
+                nodeCard.className = 'node-card node-healthy';
+            }
+        }
+        
+        function drawChart(canvasId, data, color) {
+            const container = document.getElementById(canvasId);
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            
+            // Clear previous chart
+            container.innerHTML = '';
+            
+            if (data.length < 2) return;
+            
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            
+            let pathData = `M 0 ${height - (data[0] / 100) * height}`;
+            
+            for (let i = 1; i < data.length; i++) {
+                const x = (i / (data.length - 1)) * width;
+                const y = height - (data[i] / 100) * height;
+                pathData += ` L ${x} ${y}`;
+            }
+            
+            path.setAttribute('d', pathData);
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('fill', 'none');
+            
+            svg.appendChild(path);
+            container.appendChild(svg);
+        }
+        
+        function generatePods() {
+            const podTypes = [
+                { name: 'pacman', status: 'running', namespace: 'arcade' },
+                { name: 'space-invaders', status: 'running', namespace: 'arcade' },
+                { name: 'breakout', status: 'running', namespace: 'arcade' },
+                { name: 'snake', status: 'running', namespace: 'arcade' },
+                { name: 'tetris', status: 'running', namespace: 'arcade' },
+                { name: 'dashboard', status: 'running', namespace: 'arcade' },
+                { name: 'kubectl-trainer', status: 'running', namespace: 'educational' },
+                { name: 'traefik', status: 'running', namespace: 'kube-system' },
+                { name: 'coredns', status: 'running', namespace: 'kube-system' },
+                { name: 'metrics-server', status: 'running', namespace: 'kube-system' }
+            ];
+            
+            // Add some random pods with occasional issues
+            for (let i = 0; i < 8; i++) {
+                const statuses = ['running', 'running', 'running', 'pending', 'failed'];
+                const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                podTypes.push({
+                    name: `app-${i}`,
+                    status: randomStatus,
+                    namespace: 'default'
+                });
+            }
+            
+            return podTypes;
+        }
+        
+        function updatePodGrid() {
+            const podGrid = document.getElementById('podGrid');
+            currentPods = generatePods();
+            podGrid.innerHTML = '';
+            
+            currentPods.forEach((pod, index) => {
+                const podElement = document.createElement('div');
+                podElement.className = `pod pod-${pod.status}`;
+                podElement.textContent = pod.name.substring(0, 3);
+                podElement.title = `${pod.name}\nNamespace: ${pod.namespace}\nStatus: ${pod.status}`;
+                podElement.onclick = () => showPodDetails(pod);
+                podGrid.appendChild(podElement);
+            });
+        }
+        
+        function showPodDetails(pod) {
+            const details = `
+🎯 Pod Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Name: ${pod.name}
+Namespace: ${pod.namespace}
+Status: ${pod.status}
+Node: k3s-${Math.random() > 0.5 ? 'master' : 'worker1'}
+IP: 10.42.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}
+Age: ${Math.floor(Math.random() * 24)}h${Math.floor(Math.random() * 60)}m
+
+📊 Resource Usage:
+CPU: ${(Math.random() * 100).toFixed(1)}m
+Memory: ${(Math.random() * 200).toFixed(1)}Mi
+
+🎮 kubectl Commands to Try:
+• kubectl describe pod ${pod.name} -n ${pod.namespace}
+• kubectl logs ${pod.name} -n ${pod.namespace}
+• kubectl top pod ${pod.name} -n ${pod.namespace}
+            `;
+            alert(details);
+        }
+        
+        function checkAlerts(current) {
+            const alertPanel = document.getElementById('alertPanel');
+            let alerts = [];
+            
+            if (current.cpu > 85) {
+                alerts.push('🚨 HIGH CPU USAGE: Cluster CPU above 85%');
+            }
+            if (current.memory > 90) {
+                alerts.push('🚨 HIGH MEMORY USAGE: Memory above 90%');
+            }
+            if (current.pods > 25) {
+                alerts.push('⚠️ HIGH POD COUNT: Consider scaling nodes');
+            }
+            
+            // Random alerts for educational purposes
+            if (Math.random() < 0.05) {
+                const randomAlerts = [
+                    '🔍 Pod restart detected in arcade namespace',
+                    '📡 Network latency spike detected',
+                    '💾 Persistent volume nearly full',
+                    '🔐 Failed authentication attempts detected'
+                ];
+                alerts.push(randomAlerts[Math.floor(Math.random() * randomAlerts.length)]);
+            }
+            
+            alertPanel.innerHTML = '';
+            alerts.forEach(alert => {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert';
+                alertDiv.textContent = alert;
+                alertPanel.appendChild(alertDiv);
+            });
+        }
+        
+        function startMonitoring() {
+            if (monitoring) return;
+            
+            monitoring = true;
+            updatePodGrid();
+            
+            const interval = setInterval(() => {
+                if (!monitoring) {
+                    clearInterval(interval);
+                    return;
+                }
+                updateMetricDisplay();
+                
+                // Update pod grid occasionally
+                if (Math.random() < 0.1) {
+                    updatePodGrid();
+                }
+            }, 2000);
+            
+            alert('🎮 Monitoring Started!\n\nWatch the metrics update in real-time.\nClick on pods to see details.\nLook out for alerts!');
+        }
+        
+        function simulateLoad() {
+            alert('⚡ Simulating High Load!\n\nThis represents:\n• Traffic spikes\n• Resource-intensive workloads\n• Scaling events\n\nWatch the metrics respond!');
+            
+            // Temporarily increase metrics
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    metrics.cpu.push(Math.random() * 40 + 60); // 60-100%
+                    metrics.memory.push(Math.random() * 30 + 70); // 70-100%
+                    metrics.network.push(Math.random() * 5 + 5); // 5-10 MB/s
+                }, i * 1000);
+            }
+        }
+        
+        function triggerAlert() {
+            const alertPanel = document.getElementById('alertPanel');
+            const criticalAlert = document.createElement('div');
+            criticalAlert.className = 'alert';
+            criticalAlert.innerHTML = '🚨 CRITICAL: Game pod crashed in arcade namespace!<br>Recommended action: kubectl get pods -n arcade';
+            alertPanel.appendChild(criticalAlert);
+            
+            // Simulate pod failure
+            setTimeout(() => {
+                alert('🛠️ Alert Resolution:\n\nPod has been automatically restarted by Kubernetes!\nThis demonstrates self-healing capabilities.\n\nIn real scenarios, you would:\n• Check logs: kubectl logs [pod-name]\n• Describe pod: kubectl describe pod [pod-name]\n• Review events: kubectl get events');
+                criticalAlert.remove();
+            }, 10000);
+        }
+        
+        function showKubectlCommands() {
+            const commands = `
+🎯 Essential kubectl Commands for Monitoring:
+
+📊 RESOURCE MONITORING:
+• kubectl top nodes
+• kubectl top pods -A
+• kubectl get nodes -o wide
+• kubectl describe nodes
+
+📦 POD MANAGEMENT:
+• kubectl get pods -A
+• kubectl describe pod [name] -n [namespace]
+• kubectl logs [pod-name] -n [namespace]
+• kubectl exec -it [pod-name] -n [namespace] -- sh
+
+🌐 SERVICE & NETWORKING:
+• kubectl get svc -A
+• kubectl get endpoints
+• kubectl describe svc [service-name]
+
+🔍 TROUBLESHOOTING:
+• kubectl get events -A --sort-by='.lastTimestamp'
+• kubectl describe node [node-name]
+• kubectl get pods --field-selector=status.phase!=Running
+
+📈 SCALING & RESOURCES:
+• kubectl get hpa
+• kubectl describe hpa [name]
+• kubectl scale deployment [name] --replicas=3
+            `;
+            alert(commands);
+        }
+        
+        // Initialize the monitoring game
+        function initGame() {
+            updatePodGrid();
+            
+            // Initial metrics
+            for (let i = 0; i < 10; i++) {
+                generateMetrics();
+            }
+            updateMetricDisplay();
+        }
+        
+        // Auto-start monitoring
+        setTimeout(() => {
+            alert('🎮 Welcome to the Cluster Monitor Game!\n\n🎯 Your mission: Keep the cluster healthy\n📊 Watch metrics, identify issues, learn kubectl\n🚀 Click START MONITORING to begin!');
+            initGame();
+        }, 1000);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'm':
+                    startMonitoring();
+                    break;
+                case 'l':
+                    simulateLoad();
+                    break;
+                case 'a':
+                    triggerAlert();
+                    break;
+                case 'k':
+                    showKubectlCommands();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

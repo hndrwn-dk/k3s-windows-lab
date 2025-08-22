@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man on Kubernetes</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #ffff00;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        .k8s-info {
+            background: #1a1a1a;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #ffff00;
+            border-radius: 5px;
+        }
+        canvas {
+            border: 3px solid #0000ff;
+            background: #000;
+            margin: 20px 0;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .score {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        .instructions {
+            background: #1a1a1a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🟡 PAC-MAN ON KUBERNETES 🟡</h1>
+    
+    <div class="k8s-info">
+        <h3>🚀 Running on K3s Cluster</h3>
+        <p><strong>Namespace:</strong> arcade | <strong>Pod:</strong> pacman-game</p>
+        <p><strong>Educational Goal:</strong> Learn Kubernetes while having fun!</p>
+    </div>
+
+    <div class="score">
+        <span>SCORE: <span id="score">0</span></span> | 
+        <span>LIVES: <span id="lives">3</span></span>
+    </div>
+
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+    <div class="instructions">
+        <h3>🎮 CONTROLS</h3>
+        <p>Use ARROW KEYS to move Pac-Man</p>
+        <p>Collect all dots while avoiding ghosts!</p>
+        <button onclick="startGame()" style="padding: 10px 20px; font-size: 16px; background: #ffff00; color: #000; border: none; border-radius: 5px; cursor: pointer;">START GAME</button>
+        <button onclick="pauseGame()" style="padding: 10px 20px; font-size: 16px; background: #ff0000; color: #fff; border: none; border-radius: 5px; cursor: pointer;">PAUSE</button>
+    </div>
+
+    <div class="k8s-info">
+        <h3>🎓 Kubernetes Learning Points</h3>
+        <p>• This game runs in a Pod (isolated container)</p>
+        <p>• Accessible via NodePort Service</p>
+        <p>• Demonstrates container networking</p>
+        <p>• Shows how to serve web content from K8s</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameRunning = false;
+        let score = 0;
+        let lives = 3;
+        let gameLoop;
+        
+        // Game objects
+        let pacman = {
+            x: 300,
+            y: 300,
+            size: 15,
+            dx: 0,
+            dy: 0,
+            direction: 0 // 0: right, 1: down, 2: left, 3: up
+        };
+        
+        let dots = [];
+        let ghosts = [];
+        
+        // Initialize dots in a grid pattern
+        function initDots() {
+            dots = [];
+            for (let x = 30; x < canvas.width - 30; x += 30) {
+                for (let y = 30; y < canvas.height - 30; y += 30) {
+                    if (Math.abs(x - pacman.x) > 50 || Math.abs(y - pacman.y) > 50) {
+                        dots.push({x: x, y: y, collected: false});
+                    }
+                }
+            }
+        }
+        
+        // Initialize ghosts
+        function initGhosts() {
+            ghosts = [
+                {x: 100, y: 100, dx: 2, dy: 0, color: '#ff0000'},
+                {x: 500, y: 100, dx: -2, dy: 0, color: '#ffb8ff'},
+                {x: 100, y: 500, dx: 0, dy: -2, color: '#00ffff'},
+                {x: 500, y: 500, dx: 0, dy: 2, color: '#ffb852'}
+            ];
+        }
+        
+        function drawPacman() {
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            
+            const mouthAngle = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
+            const startAngle = (pacman.direction * Math.PI / 2) + (mouthAngle * 0.8);
+            const endAngle = startAngle + (2 * Math.PI - 1.6);
+            
+            ctx.arc(pacman.x, pacman.y, pacman.size, startAngle, endAngle);
+            ctx.lineTo(pacman.x, pacman.y);
+            ctx.fill();
+        }
+        
+        function drawDots() {
+            ctx.fillStyle = '#ffff00';
+            dots.forEach(dot => {
+                if (!dot.collected) {
+                    ctx.beginPath();
+                    ctx.arc(dot.x, dot.y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+        }
+        
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.fillStyle = ghost.color;
+                ctx.beginPath();
+                ctx.arc(ghost.x, ghost.y, 12, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Ghost eyes
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(ghost.x - 4, ghost.y - 4, 2, 0, 2 * Math.PI);
+                ctx.arc(ghost.x + 4, ghost.y - 4, 2, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+        
+        function updatePacman() {
+            pacman.x += pacman.dx;
+            pacman.y += pacman.dy;
+            
+            // Wrap around screen
+            if (pacman.x < 0) pacman.x = canvas.width;
+            if (pacman.x > canvas.width) pacman.x = 0;
+            if (pacman.y < 0) pacman.y = canvas.height;
+            if (pacman.y > canvas.height) pacman.y = 0;
+            
+            // Check dot collection
+            dots.forEach(dot => {
+                if (!dot.collected) {
+                    const dist = Math.sqrt((pacman.x - dot.x) ** 2 + (pacman.y - dot.y) ** 2);
+                    if (dist < 20) {
+                        dot.collected = true;
+                        score += 10;
+                        document.getElementById('score').textContent = score;
+                    }
+                }
+            });
+            
+            // Check if all dots collected
+            if (dots.every(dot => dot.collected)) {
+                alert('🎉 LEVEL COMPLETE! You mastered Kubernetes networking! 🎉');
+                resetGame();
+            }
+        }
+        
+        function updateGhosts() {
+            ghosts.forEach(ghost => {
+                ghost.x += ghost.dx;
+                ghost.y += ghost.dy;
+                
+                // Bounce off walls
+                if (ghost.x <= 15 || ghost.x >= canvas.width - 15) {
+                    ghost.dx = -ghost.dx;
+                }
+                if (ghost.y <= 15 || ghost.y >= canvas.height - 15) {
+                    ghost.dy = -ghost.dy;
+                }
+                
+                // Random direction change
+                if (Math.random() < 0.01) {
+                    ghost.dx = (Math.random() - 0.5) * 4;
+                    ghost.dy = (Math.random() - 0.5) * 4;
+                }
+                
+                // Check collision with pacman
+                const dist = Math.sqrt((pacman.x - ghost.x) ** 2 + (pacman.y - ghost.y) ** 2);
+                if (dist < 25) {
+                    lives--;
+                    document.getElementById('lives').textContent = lives;
+                    if (lives <= 0) {
+                        alert('💀 GAME OVER! Your pod has been terminated! 💀');
+                        resetGame();
+                    } else {
+                        // Reset pacman position
+                        pacman.x = 300;
+                        pacman.y = 300;
+                        pacman.dx = 0;
+                        pacman.dy = 0;
+                    }
+                }
+            });
+        }
+        
+        function gameUpdate() {
+            if (!gameRunning) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            updatePacman();
+            updateGhosts();
+            
+            drawDots();
+            drawPacman();
+            drawGhosts();
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            
+            gameRunning = true;
+            initDots();
+            initGhosts();
+            
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(gameUpdate, 1000/60); // 60 FPS
+        }
+        
+        function pauseGame() {
+            gameRunning = !gameRunning;
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            if (gameLoop) clearInterval(gameLoop);
+            
+            score = 0;
+            lives = 3;
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            
+            pacman.x = 300;
+            pacman.y = 300;
+            pacman.dx = 0;
+            pacman.dy = 0;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            const speed = 3;
+            switch(e.key) {
+                case 'ArrowUp':
+                    pacman.dx = 0;
+                    pacman.dy = -speed;
+                    pacman.direction = 3;
+                    break;
+                case 'ArrowDown':
+                    pacman.dx = 0;
+                    pacman.dy = speed;
+                    pacman.direction = 1;
+                    break;
+                case 'ArrowLeft':
+                    pacman.dx = -speed;
+                    pacman.dy = 0;
+                    pacman.direction = 2;
+                    break;
+                case 'ArrowRight':
+                    pacman.dx = speed;
+                    pacman.dy = 0;
+                    pacman.direction = 0;
+                    break;
+            }
+        });
+        
+        // Initialize on load
+        resetGame();
+    </script>
+</body>
+</html>

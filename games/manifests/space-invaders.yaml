@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: space-invaders
+  namespace: arcade
+  labels:
+    app: space-invaders
+    game-type: arcade
+    difficulty: medium
+    k8s-concept: security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: space-invaders
+  template:
+    metadata:
+      labels:
+        app: space-invaders
+        game-type: arcade
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: space-invaders
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: game-content
+          mountPath: /usr/share/nginx/html
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      volumes:
+      - name: game-content
+        configMap:
+          name: space-invaders-content
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: space-invaders-content
+  namespace: arcade
+data:
+  index.html: |
+    <!-- Space Invaders game content would be here -->
+    <!-- Referencing the full HTML file created earlier -->
+    <h1>👾 SPACE INVADERS - KUBERNETES EDITION 👾</h1>
+    <p>Defend your cluster from malicious containers!</p>
+    <p>This game demonstrates Kubernetes security concepts.</p>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: space-invaders-service
+  namespace: arcade
+  labels:
+    app: space-invaders
+spec:
+  selector:
+    app: space-invaders
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30002
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: space-invaders-netpol
+  namespace: arcade
+spec:
+  podSelector:
+    matchLabels:
+      app: space-invaders
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: default
+    ports:
+    - protocol: TCP
+      port: 80
+  egress:
+  - {} # Allow all egress for demo purposes

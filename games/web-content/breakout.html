@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Breakout</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        .k8s-info {
+            background: #16213e;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #0f3460;
+            border-radius: 5px;
+        }
+        canvas {
+            border: 3px solid #0f3460;
+            background: #0e1a2e;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(15, 52, 96, 0.5);
+        }
+        .hud {
+            font-size: 20px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-around;
+            max-width: 800px;
+            margin: 10px auto;
+        }
+        .instructions {
+            background: #16213e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .start-btn { background: #4CAF50; color: #fff; }
+        .pause-btn { background: #ff5722; color: #fff; }
+    </style>
+</head>
+<body>
+    <h1>🧱 KUBERNETES BREAKOUT 🧱</h1>
+    
+    <div class="k8s-info">
+        <h3>⚡ Breaking Down Monoliths into Microservices!</h3>
+        <p><strong>Mission:</strong> Break down the monolithic architecture!</p>
+        <p><strong>Namespace:</strong> arcade | <strong>Pod:</strong> breakout-game</p>
+    </div>
+
+    <div class="hud">
+        <span>SCORE: <span id="score">0</span></span>
+        <span>LEVEL: <span id="level">1</span></span>
+        <span>MICROSERVICES: <span id="services">0</span></span>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div class="instructions">
+        <h3>🎮 CONTROLS</h3>
+        <p><strong>A/D or ←/→:</strong> Move paddle | <strong>SPACE:</strong> Launch ball</p>
+        <button class="start-btn" onclick="startGame()">START REFACTORING</button>
+        <button class="pause-btn" onclick="pauseGame()">PAUSE</button>
+        <button class="start-btn" onclick="resetGame()">RESET ARCHITECTURE</button>
+    </div>
+
+    <div class="k8s-info">
+        <h3>🎓 Kubernetes Architecture Lessons</h3>
+        <p>• <strong>Paddle:</strong> Your load balancer distributing traffic</p>
+        <p>• <strong>Ball:</strong> Network requests bouncing between services</p>
+        <p>• <strong>Bricks:</strong> Monolithic components to break into microservices</p>
+        <p>• <strong>Colors:</strong> Different service types (API, DB, Cache, etc.)</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let services = 0;
+        let gameLoop;
+        
+        // Game objects
+        let paddle = {
+            x: canvas.width / 2,
+            y: canvas.height - 30,
+            width: 100,
+            height: 15,
+            dx: 0
+        };
+        
+        let ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 8,
+            dx: 4,
+            dy: -4,
+            launched: false
+        };
+        
+        let bricks = [];
+        
+        // Kubernetes service types and colors
+        const serviceTypes = [
+            { name: 'API Gateway', color: '#ff6b6b' },
+            { name: 'Database', color: '#4ecdc4' },
+            { name: 'Cache', color: '#45b7d1' },
+            { name: 'Auth Service', color: '#f9ca24' },
+            { name: 'File Storage', color: '#f0932b' },
+            { name: 'Message Queue', color: '#eb4d4b' },
+            { name: 'Analytics', color: '#6c5ce7' },
+            { name: 'Monitoring', color: '#a29bfe' }
+        ];
+        
+        function initBricks() {
+            bricks = [];
+            const rows = 8;
+            const cols = 10;
+            const brickWidth = 75;
+            const brickHeight = 25;
+            const startX = 10;
+            const startY = 50;
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const serviceType = serviceTypes[row % serviceTypes.length];
+                    bricks.push({
+                        x: startX + col * (brickWidth + 2),
+                        y: startY + row * (brickHeight + 2),
+                        width: brickWidth,
+                        height: brickHeight,
+                        destroyed: false,
+                        serviceType: serviceType,
+                        hits: 0,
+                        maxHits: Math.floor(row / 2) + 1
+                    });
+                }
+            }
+        }
+        
+        function drawPaddle() {
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(paddle.x - paddle.width/2, paddle.y, paddle.width, paddle.height);
+            
+            // Load balancer label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px Courier';
+            ctx.fillText('Load Balancer', paddle.x - 30, paddle.y + 12);
+        }
+        
+        function drawBall() {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Request trail effect
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.arc(ball.x - ball.dx, ball.y - ball.dy, ball.radius * 0.7, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        function drawBricks() {
+            bricks.forEach(brick => {
+                if (!brick.destroyed) {
+                    // Damage effect
+                    const alpha = 1 - (brick.hits / brick.maxHits) * 0.5;
+                    ctx.fillStyle = brick.serviceType.color;
+                    ctx.globalAlpha = alpha;
+                    ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+                    
+                    // Service name
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '9px Courier';
+                    ctx.fillText(brick.serviceType.name, brick.x + 5, brick.y + 15);
+                    
+                    // Damage indicator
+                    if (brick.hits > 0) {
+                        ctx.fillStyle = '#ff0000';
+                        for (let i = 0; i < brick.hits; i++) {
+                            ctx.fillRect(brick.x + i * 8, brick.y - 5, 6, 3);
+                        }
+                    }
+                }
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        function updatePaddle() {
+            paddle.x += paddle.dx;
+            
+            // Keep paddle on screen
+            if (paddle.x < paddle.width/2) paddle.x = paddle.width/2;
+            if (paddle.x > canvas.width - paddle.width/2) paddle.x = canvas.width - paddle.width/2;
+        }
+        
+        function updateBall() {
+            if (!ball.launched) {
+                ball.x = paddle.x;
+                return;
+            }
+            
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+            
+            // Wall collisions
+            if (ball.x <= ball.radius || ball.x >= canvas.width - ball.radius) {
+                ball.dx = -ball.dx;
+            }
+            if (ball.y <= ball.radius) {
+                ball.dy = -ball.dy;
+            }
+            
+            // Paddle collision
+            if (ball.y + ball.radius >= paddle.y && 
+                ball.x >= paddle.x - paddle.width/2 && 
+                ball.x <= paddle.x + paddle.width/2) {
+                ball.dy = -Math.abs(ball.dy);
+                
+                // Add spin based on where ball hits paddle
+                const hitPos = (ball.x - paddle.x) / paddle.width;
+                ball.dx += hitPos * 2;
+            }
+            
+            // Brick collisions
+            bricks.forEach(brick => {
+                if (!brick.destroyed && 
+                    ball.x >= brick.x && ball.x <= brick.x + brick.width &&
+                    ball.y >= brick.y && ball.y <= brick.y + brick.height) {
+                    
+                    ball.dy = -ball.dy;
+                    brick.hits++;
+                    
+                    if (brick.hits >= brick.maxHits) {
+                        brick.destroyed = true;
+                        score += brick.maxHits * 10;
+                        services++;
+                        document.getElementById('score').textContent = score;
+                        document.getElementById('services').textContent = services;
+                    }
+                }
+            });
+            
+            // Ball goes off bottom (service failure!)
+            if (ball.y > canvas.height) {
+                ball.launched = false;
+                ball.x = paddle.x;
+                ball.y = canvas.height / 2;
+                ball.dx = 4;
+                ball.dy = -4;
+                
+                alert('🚨 Service Failure! Request lost! Try again! 🚨');
+            }
+            
+            // Check if all bricks destroyed (full microservices!)
+            if (bricks.every(brick => brick.destroyed)) {
+                level++;
+                document.getElementById('level').textContent = level;
+                alert('🎉 Architecture Refactored! Moving to next complexity level! 🎉');
+                setTimeout(() => {
+                    initBricks();
+                    ball.launched = false;
+                    ball.x = paddle.x;
+                    ball.y = canvas.height / 2;
+                    // Increase difficulty
+                    ball.dx *= 1.1;
+                    ball.dy *= 1.1;
+                }, 1000);
+            }
+        }
+        
+        function gameUpdate() {
+            if (!gameRunning) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            updatePaddle();
+            updateBall();
+            
+            drawBricks();
+            drawPaddle();
+            drawBall();
+            
+            // Draw instructions if ball not launched
+            if (!ball.launched) {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px Courier';
+                ctx.fillText('Press SPACE to launch request!', canvas.width/2 - 120, canvas.height/2 + 50);
+            }
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            
+            gameRunning = true;
+            initBricks();
+            
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(gameUpdate, 1000/60);
+        }
+        
+        function pauseGame() {
+            gameRunning = !gameRunning;
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            if (gameLoop) clearInterval(gameLoop);
+            
+            score = 0;
+            level = 1;
+            services = 0;
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('services').textContent = services;
+            
+            paddle.x = canvas.width / 2;
+            paddle.dx = 0;
+            
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = 4;
+            ball.dy = -4;
+            ball.launched = false;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    paddle.dx = -8;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    paddle.dx = 8;
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (!ball.launched) {
+                        ball.launched = true;
+                    }
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' ||
+                e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                paddle.dx = 0;
+            }
+        });
+        
+        // Initialize on load
+        resetGame();
+    </script>
+</body>
+</html>

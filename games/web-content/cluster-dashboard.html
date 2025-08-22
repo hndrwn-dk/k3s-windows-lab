@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Game Arcade Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 10px #fff; }
+            to { text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 20px #fff, 0 0 30px #fff; }
+        }
+        
+        .cluster-status {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .game-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border-color: #00ff88;
+        }
+        
+        .game-card h3 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 1.4em;
+        }
+        
+        .game-preview {
+            width: 100%;
+            height: 150px;
+            background: #000;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            border: 1px solid #333;
+        }
+        
+        .game-info {
+            margin: 10px 0;
+        }
+        
+        .difficulty {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin: 5px 0;
+        }
+        
+        .easy { background: #4CAF50; }
+        .medium { background: #ff9800; }
+        .hard { background: #f44336; }
+        
+        .k8s-concepts {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .concept-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: rgba(0,0,0,0.4);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            color: #00ff88;
+            display: block;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 KUBERNETES GAME ARCADE 🎮</h1>
+        <p>Learn Kubernetes through retro gaming! Each game teaches different K8s concepts.</p>
+    </div>
+
+    <div class="cluster-status">
+        <h2>🚀 Cluster Status</h2>
+        <div class="stats">
+            <div class="stat-card">
+                <span class="stat-value" id="nodeCount">3</span>
+                <div>Active Nodes</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="podCount">12</span>
+                <div>Running Pods</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="gameCount">8</span>
+                <div>Available Games</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="uptime">99.9%</span>
+                <div>Cluster Uptime</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="games-grid">
+        <div class="game-card" onclick="openGame('pacman')">
+            <h3>🟡 Pac-Man</h3>
+            <div class="game-preview">🟡👻👻👻</div>
+            <div class="game-info">
+                <p>Classic maze game with Kubernetes networking concepts</p>
+                <span class="difficulty easy">Easy</span>
+            </div>
+            <p><strong>Learn:</strong> Pod networking, service discovery</p>
+        </div>
+
+        <div class="game-card" onclick="openGame('space-invaders')">
+            <h3>👾 Space Invaders</h3>
+            <div class="game-preview">👾👾👾<br>🚀</div>
+            <div class="game-info">
+                <p>Defend your cluster from malicious containers!</p>
+                <span class="difficulty medium">Medium</span>
+            </div>
+            <p><strong>Learn:</strong> Security policies, cluster defense</p>
+        </div>
+
+        <div class="game-card" onclick="openGame('breakout')">
+            <h3>🧱 Kubernetes Breakout</h3>
+            <div class="game-preview">🧱🧱🧱<br>⚪<br>🏓</div>
+            <div class="game-info">
+                <p>Break monoliths into microservices!</p>
+                <span class="difficulty medium">Medium</span>
+            </div>
+            <p><strong>Learn:</strong> Microservices architecture, load balancing</p>
+        </div>
+
+        <div class="game-card" onclick="openGame('snake')">
+            <h3>🐍 Snake</h3>
+            <div class="game-preview">🐍🍎</div>
+            <div class="game-info">
+                <p>Classic snake game with scaling concepts</p>
+                <span class="difficulty easy">Easy</span>
+            </div>
+            <p><strong>Learn:</strong> Horizontal pod autoscaling</p>
+        </div>
+
+        <div class="game-card" onclick="openGame('tetris')">
+            <h3>🧩 Kubernetes Tetris</h3>
+            <div class="game-preview">🧩<br>🧩🧩<br>🧩🧩🧩</div>
+            <div class="game-info">
+                <p>Organize containers efficiently!</p>
+                <span class="difficulty hard">Hard</span>
+            </div>
+            <p><strong>Learn:</strong> Resource management, scheduling</p>
+        </div>
+
+        <div class="game-card" onclick="openGame('frogger')">
+            <h3>🐸 Cluster Frogger</h3>
+            <div class="game-preview">🚗🚗🚗<br>🐸<br>🚛🚛🚛</div>
+            <div class="game-info">
+                <p>Navigate through network traffic!</p>
+                <span class="difficulty medium">Medium</span>
+            </div>
+            <p><strong>Learn:</strong> Network policies, traffic management</p>
+        </div>
+
+        <div class="game-card" onclick="openGame('memory')">
+            <h3>🧠 Pod Memory Game</h3>
+            <div class="game-preview">❓❓❓<br>❓🎯❓<br>❓❓❓</div>
+            <div class="game-info">
+                <p>Match container pairs and learn labels!</p>
+                <span class="difficulty easy">Easy</span>
+            </div>
+            <p><strong>Learn:</strong> Labels, selectors, pod management</p>
+        </div>
+
+        <div class="game-card" onclick="openGame('monitoring')">
+            <h3>📊 Cluster Monitor</h3>
+            <div class="game-preview">📈📊📉</div>
+            <div class="game-info">
+                <p>Real-time cluster metrics visualization</p>
+                <span class="difficulty easy">Educational</span>
+            </div>
+            <p><strong>Learn:</strong> Monitoring, metrics, observability</p>
+        </div>
+    </div>
+
+    <div class="k8s-concepts">
+        <h2>🎓 Kubernetes Concepts Covered</h2>
+        <div class="concept-grid">
+            <div class="concept-card">
+                <h4>🏗️ Architecture</h4>
+                <p>Master/Worker nodes, Control plane, etcd</p>
+            </div>
+            <div class="concept-card">
+                <h4>📦 Workloads</h4>
+                <p>Pods, Deployments, ReplicaSets, Services</p>
+            </div>
+            <div class="concept-card">
+                <h4>🌐 Networking</h4>
+                <p>ClusterIP, NodePort, LoadBalancer, Ingress</p>
+            </div>
+            <div class="concept-card">
+                <h4>💾 Storage</h4>
+                <p>Volumes, PVC, StorageClasses</p>
+            </div>
+            <div class="concept-card">
+                <h4>🔒 Security</h4>
+                <p>RBAC, Network Policies, Pod Security</p>
+            </div>
+            <div class="concept-card">
+                <h4>📈 Observability</h4>
+                <p>Monitoring, Logging, Metrics, Tracing</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <h3>🚀 Running on K3s Cluster</h3>
+        <p>This dashboard demonstrates how to serve web content from Kubernetes</p>
+        <p><strong>Namespace:</strong> arcade | <strong>Pod:</strong> game-dashboard</p>
+        <p>Made with ❤️ for the Kubernetes community</p>
+    </div>
+
+    <script>
+        function openGame(gameName) {
+            // In a real deployment, these would be the actual service URLs
+            const gameUrls = {
+                'pacman': '#pacman-service',
+                'space-invaders': '#space-invaders-service',
+                'breakout': '#breakout-service',
+                'snake': '#snake-service',
+                'tetris': '#tetris-service',
+                'frogger': '#frogger-service',
+                'memory': '#memory-service',
+                'monitoring': '#monitoring-service'
+            };
+            
+            alert(`🎮 Opening ${gameName}!\n\nIn a real K8s deployment, this would redirect to:\n${gameUrls[gameName] || '#game-service'}\n\nFor now, enjoy the preview! 🚀`);
+        }
+        
+        // Simulate real-time cluster stats
+        function updateStats() {
+            const nodeCount = document.getElementById('nodeCount');
+            const podCount = document.getElementById('podCount');
+            const uptime = document.getElementById('uptime');
+            
+            // Simulate some variance in pod count
+            const basePods = 12;
+            const variance = Math.floor(Math.random() * 6) - 3;
+            podCount.textContent = Math.max(8, basePods + variance);
+            
+            // Simulate uptime
+            const uptimes = ['99.9%', '99.8%', '100%', '99.7%'];
+            uptime.textContent = uptimes[Math.floor(Math.random() * uptimes.length)];
+        }
+        
+        // Update stats every 5 seconds
+        setInterval(updateStats, 5000);
+        
+        // Add some interactive elements
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'k') {
+                alert('🎯 kubectl shortcut activated!\n\nPress different keys for kubectl commands:\n• n - get nodes\n• p - get pods\n• s - get services');
+            } else if (e.key === 'n') {
+                alert('kubectl get nodes\n\nNAME         STATUS   ROLES    AGE   VERSION\nk3s-master   Ready    master   1d    v1.32.6\nk3s-worker1  Ready    worker   1d    v1.32.6');
+            } else if (e.key === 'p') {
+                alert('kubectl get pods -A\n\nNAMESPACE   NAME                 READY   STATUS    RESTARTS   AGE\narcade      pacman-game          1/1     Running   0          1h\narcade      space-invaders       1/1     Running   0          1h\ndefault     game-dashboard       1/1     Running   0          30m');
+            } else if (e.key === 's') {
+                alert('kubectl get services -A\n\nNAMESPACE   NAME             TYPE       CLUSTER-IP     PORT(S)\narcade      pacman-svc       NodePort   10.43.123.45   80:30001/TCP\narcade      invaders-svc     NodePort   10.43.123.46   80:30002/TCP');
+            }
+        });
+        
+        // Welcome message
+        setTimeout(() => {
+            alert('🎮 Welcome to the Kubernetes Game Arcade!\n\n🎯 Each game teaches different K8s concepts\n🚀 Click on any game card to start playing\n⌨️ Press "k" for kubectl shortcuts\n\nHave fun learning Kubernetes! 🎉');
+        }, 1000);
+    </script>
+</body>
+</html>

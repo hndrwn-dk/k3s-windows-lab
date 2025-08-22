@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Invaders - Kubernetes Edition</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        .k8s-info {
+            background: #001100;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+        }
+        canvas {
+            border: 3px solid #00ff00;
+            background: #000;
+            margin: 20px 0;
+        }
+        .hud {
+            font-size: 20px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-around;
+            max-width: 800px;
+            margin: 10px auto;
+        }
+        .instructions {
+            background: #001100;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .start-btn { background: #00ff00; color: #000; }
+        .pause-btn { background: #ff0000; color: #fff; }
+    </style>
+</head>
+<body>
+    <h1>👾 SPACE INVADERS - KUBERNETES EDITION 👾</h1>
+    
+    <div class="k8s-info">
+        <h3>🚀 Defending the Kubernetes Cluster!</h3>
+        <p><strong>Mission:</strong> Protect your pods from alien containers!</p>
+        <p><strong>Namespace:</strong> arcade | <strong>Pod:</strong> space-invaders</p>
+    </div>
+
+    <div class="hud">
+        <span>SCORE: <span id="score">0</span></span>
+        <span>LIVES: <span id="lives">3</span></span>
+        <span>WAVE: <span id="wave">1</span></span>
+        <span>PODS SAVED: <span id="pods">0</span></span>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div class="instructions">
+        <h3>🎮 CONTROLS</h3>
+        <p><strong>A/D or ←/→:</strong> Move ship | <strong>SPACEBAR:</strong> Fire kubectl commands!</p>
+        <button class="start-btn" onclick="startGame()">DEPLOY DEFENSES</button>
+        <button class="pause-btn" onclick="pauseGame()">PAUSE CLUSTER</button>
+        <button class="start-btn" onclick="resetGame()">RESTART CLUSTER</button>
+    </div>
+
+    <div class="k8s-info">
+        <h3>🎓 Kubernetes Concepts in Action</h3>
+        <p>• <strong>Player Ship:</strong> Your kubectl client</p>
+        <p>• <strong>Invaders:</strong> Malicious containers trying to infiltrate</p>
+        <p>• <strong>Bullets:</strong> kubectl delete commands</p>
+        <p>• <strong>Shields:</strong> Network policies protecting your cluster</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameRunning = false;
+        let score = 0;
+        let lives = 3;
+        let wave = 1;
+        let pods = 0;
+        let gameLoop;
+        
+        // Game objects
+        let player = {
+            x: canvas.width / 2,
+            y: canvas.height - 50,
+            width: 40,
+            height: 20,
+            dx: 0
+        };
+        
+        let bullets = [];
+        let invaders = [];
+        let shields = [];
+        
+        // Initialize invaders
+        function initInvaders() {
+            invaders = [];
+            const rows = 5;
+            const cols = 10;
+            const invaderWidth = 30;
+            const invaderHeight = 20;
+            const startX = 50;
+            const startY = 50;
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    invaders.push({
+                        x: startX + col * (invaderWidth + 10),
+                        y: startY + row * (invaderHeight + 10),
+                        width: invaderWidth,
+                        height: invaderHeight,
+                        alive: true,
+                        type: row % 3 // Different types for variety
+                    });
+                }
+            }
+        }
+        
+        // Initialize shields
+        function initShields() {
+            shields = [];
+            for (let i = 0; i < 4; i++) {
+                shields.push({
+                    x: 100 + i * 150,
+                    y: canvas.height - 200,
+                    width: 60,
+                    height: 40,
+                    health: 3
+                });
+            }
+        }
+        
+        function drawPlayer() {
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(player.x - player.width/2, player.y, player.width, player.height);
+            
+            // Draw kubectl symbol
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px Courier';
+            ctx.fillText('kubectl', player.x - 20, player.y + 15);
+        }
+        
+        function drawBullets() {
+            ctx.fillStyle = '#00ffff';
+            bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x - 2, bullet.y, 4, 10);
+            });
+        }
+        
+        function drawInvaders() {
+            invaders.forEach(invader => {
+                if (invader.alive) {
+                    // Different colors for different types
+                    const colors = ['#ff0000', '#ffff00', '#ff00ff'];
+                    ctx.fillStyle = colors[invader.type];
+                    
+                    ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
+                    
+                    // Draw container symbol
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px Courier';
+                    ctx.fillText('🐳', invader.x + 5, invader.y + 15);
+                }
+            });
+        }
+        
+        function drawShields() {
+            shields.forEach(shield => {
+                if (shield.health > 0) {
+                    const alpha = shield.health / 3;
+                    ctx.fillStyle = `rgba(0, 255, 255, ${alpha})`;
+                    ctx.fillRect(shield.x, shield.y, shield.width, shield.height);
+                    
+                    // Draw network policy symbol
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px Courier';
+                    ctx.fillText('🛡️', shield.x + 20, shield.y + 25);
+                }
+            });
+        }
+        
+        function updatePlayer() {
+            player.x += player.dx;
+            
+            // Keep player on screen
+            if (player.x < player.width/2) player.x = player.width/2;
+            if (player.x > canvas.width - player.width/2) player.x = canvas.width - player.width/2;
+        }
+        
+        function updateBullets() {
+            bullets = bullets.filter(bullet => {
+                bullet.y -= 8;
+                
+                // Remove bullets that go off screen
+                if (bullet.y < 0) return false;
+                
+                // Check collision with invaders
+                for (let invader of invaders) {
+                    if (invader.alive && 
+                        bullet.x > invader.x && bullet.x < invader.x + invader.width &&
+                        bullet.y > invader.y && bullet.y < invader.y + invader.height) {
+                        invader.alive = false;
+                        score += (invader.type + 1) * 10;
+                        pods++;
+                        document.getElementById('score').textContent = score;
+                        document.getElementById('pods').textContent = pods;
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+        }
+        
+        function updateInvaders() {
+            let direction = 1;
+            let moveDown = false;
+            
+            // Check if any invader hits the edge
+            for (let invader of invaders) {
+                if (invader.alive) {
+                    if (invader.x <= 0 || invader.x >= canvas.width - invader.width) {
+                        moveDown = true;
+                        direction = -direction;
+                        break;
+                    }
+                }
+            }
+            
+            // Move invaders
+            invaders.forEach(invader => {
+                if (invader.alive) {
+                    if (moveDown) {
+                        invader.y += 20;
+                    } else {
+                        invader.x += direction * 2;
+                    }
+                    
+                    // Check if invaders reached the bottom (cluster compromised!)
+                    if (invader.y > canvas.height - 100) {
+                        lives = 0;
+                        document.getElementById('lives').textContent = lives;
+                    }
+                }
+            });
+            
+            // Check if all invaders destroyed
+            if (invaders.every(invader => !invader.alive)) {
+                wave++;
+                document.getElementById('wave').textContent = wave;
+                setTimeout(() => {
+                    initInvaders();
+                    // Make next wave slightly faster/harder
+                }, 1000);
+            }
+        }
+        
+        function gameUpdate() {
+            if (!gameRunning) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            updatePlayer();
+            updateBullets();
+            updateInvaders();
+            
+            drawShields();
+            drawPlayer();
+            drawBullets();
+            drawInvaders();
+            
+            // Check game over
+            if (lives <= 0) {
+                gameRunning = false;
+                ctx.fillStyle = '#ff0000';
+                ctx.font = '48px Courier';
+                ctx.fillText('CLUSTER COMPROMISED!', canvas.width/2 - 200, canvas.height/2);
+                ctx.font = '24px Courier';
+                ctx.fillText('Press DEPLOY DEFENSES to restart', canvas.width/2 - 150, canvas.height/2 + 50);
+            }
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            
+            gameRunning = true;
+            initInvaders();
+            initShields();
+            
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(gameUpdate, 1000/60);
+        }
+        
+        function pauseGame() {
+            gameRunning = !gameRunning;
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            if (gameLoop) clearInterval(gameLoop);
+            
+            score = 0;
+            lives = 3;
+            wave = 1;
+            pods = 0;
+            bullets = [];
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('wave').textContent = wave;
+            document.getElementById('pods').textContent = pods;
+            
+            player.x = canvas.width / 2;
+            player.dx = 0;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function shootBullet() {
+            if (bullets.length < 3) { // Limit concurrent kubectl commands
+                bullets.push({
+                    x: player.x,
+                    y: player.y
+                });
+            }
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    player.dx = -5;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    player.dx = 5;
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    shootBullet();
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' ||
+                e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                player.dx = 0;
+            }
+        });
+        
+        // Initialize on load
+        resetGame();
+    </script>
+</body>
+</html>
